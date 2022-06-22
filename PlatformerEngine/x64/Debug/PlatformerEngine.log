@@ -1,0 +1,24 @@
+﻿  C:/sgdk/bin/mkdir.exe -p src/boot
+  C:/sgdk/bin/mkdir.exe -p out
+  C:/sgdk/bin/cp.exe C:/sgdk/src/boot/sega.s src/boot/sega.s
+  C:/sgdk/bin/cp.exe C:/sgdk/src/boot/rom_head.c src/boot/rom_head.c
+  C:/sgdk/bin/gcc.exe  -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -c src/boot/rom_head.c -o out/rom_head.o
+  C:/sgdk/bin/objcopy.exe -O binary out/rom_head.o out/rom_head.bin
+  C:/sgdk/bin/gcc.exe -x assembler-with-cpp  -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -c src/boot/sega.s -o out/sega.o
+  C:/sgdk/bin/mkdir.exe -p out/src/
+  C:/sgdk/bin/gcc.exe  -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/main.c -o out/src/main.o
+  echo "out/src/main.o" > out/cmd_
+  C:/sgdk/bin/gcc.exe -BC:/sgdk/bin -n -T C:/sgdk/md.ld -nostdlib out/sega.o @out/cmd_ C:/sgdk/lib/libmd.a C:/sgdk/lib/libgcc.a -o out/rom.out -Wl,--gc-sections
+C:/sgdk/inc/sys.h(194,6): warning G84A22C35: type of 'SYS_doVBlankProcess' does not match original declaration [-Wlto-type-mismatch]
+   bool SYS_doVBlankProcess(void);
+        ^
+  D:/apps/SGDK/src/sys.c:652:6: note: return value type mismatch
+  D:/apps/SGDK/inc/types.h:80:24: note: type 'bool' should match type 'bool'
+  C:/sgdk/inc/types.h:112:12: note: the incompatible type is defined here
+   typedef u8 bool;
+              ^
+  D:/apps/SGDK/src/sys.c:652:6: note: 'SYS_doVBlankProcess' was previously declared here
+  C:/sgdk/bin/rm.exe out/cmd_
+  C:/sgdk/bin/objcopy.exe -O binary out/rom.out out/rom.bin
+  java -jar C:/sgdk/bin/sizebnd.jar out/rom.bin -sizealign 131072 -checksum
+  C:/sgdk/bin/nm.exe --plugin=liblto_plugin-0.dll -n out/rom.out > out/symbol.txt

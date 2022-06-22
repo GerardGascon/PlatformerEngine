@@ -1,0 +1,13 @@
+/[Mm]egaDriveProject/romexecuter/
+/[Mm]egaDriveProject/out/
+/[Mm]egaDriveProject/Debug/
+/[Dd]ebug/
+
+.vs/
+
+cloc-1.90.exe
+
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
