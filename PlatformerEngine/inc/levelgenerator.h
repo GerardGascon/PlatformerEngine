@@ -5,7 +5,6 @@
 #include "player.h"
 #include "global.h"
 
-
 u8 getTileValue(s16 x, s16 y);
 
 void freeCollisionMap();

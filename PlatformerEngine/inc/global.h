@@ -6,15 +6,8 @@
 
 #define TILEMAP_PLANE BG_A
 
-#define PLAYER_PALETTE PAL0
-#define ENEMY_PALETTE PAL2
-#define BOX_PALETTE PAL1
-#define SMOKE_PALETTE PAL0
-#define JUMP_PAD_PALETTE PAL0
-#define MOVING_PLATFORM_PALETTE PAL1
-#define MINE_CART_PALETTE PAL0
-#define UI_PALETTE PAL3
-#define CURRENCY_PALETTE PAL3
+#define PLAYER_PALETTE PAL1
+#define LEVEL_PALETTE PAL0
 
 #define GROUND_TILE 1
 #define LADDER_TILE 2
@@ -30,7 +23,6 @@ struct {
 
 extern Map* bga;
 
-extern AABB levelBounds;
 extern AABB roomSize;
 extern AABB playerBounds;
 

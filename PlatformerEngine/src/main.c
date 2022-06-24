@@ -6,21 +6,23 @@
 
 void inGameJoyEvent(u16 joy, u16 changed, u16 state);
 
-int main() {
+int main(u16 resetType) {
+	//Soft resets don't clear RAM, this can bring some bugs so we hard reset every time we detect a soft reset
+	if (!resetType)
+		SYS_hardReset();
+
 	JOY_init();
 	SPR_init();
 
 	loadLevel();
 	playerInit();
-	setupCamera(newVector2D_u16(160, 112), 20, 20);
+	setupCamera(newVector2D_u16(160, 112), 20, 20); //We have to setup always after the player, it directly depends on player's data
 
 	JOY_setEventHandler(inGameJoyEvent);
 
 	while (TRUE) {
 		updatePlayer();
 		updateCamera();
-
-		KLog_U1("", SYS_getCPULoad());
 
 		SYS_doVBlankProcess();
 		SPR_update();

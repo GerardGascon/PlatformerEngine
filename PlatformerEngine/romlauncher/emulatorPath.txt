@@ -1,4 +1,4 @@
-C:\sgdk\emulators\Blastem\blastem.exe
+C:\sgdk\emulators\gensKMod\gens.exe
 
 C:\sgdk\emulators\Regen0972\Regen.exe
 C:\sgdk\emulators\gensKMod\gens.exe

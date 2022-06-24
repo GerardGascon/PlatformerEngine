@@ -53,5 +53,5 @@ void playerInit();
 void updatePlayer();
 
 void setPlayerAnimation(u16 index);
-//Returns true if last frame
+//Returns true if last frame, useful to prevent looping
 bool updatePlayerAnimations();

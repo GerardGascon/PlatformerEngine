@@ -11,4 +11,4 @@ out/src/physics.o: src/physics.c src/../inc/physics.h \
  C:/sgdk/inc/sprite_eng.h C:/sgdk/inc/sound.h C:/sgdk/inc/xgm.h \
  C:/sgdk/inc/z80_ctrl.h C:/sgdk/inc/ym2612.h C:/sgdk/inc/psg.h \
  C:/sgdk/inc/joy.h C:/sgdk/inc/timer.h C:/sgdk/inc/task.h \
- C:/sgdk/inc/task_cst.h src/../inc/types.h src/../inc/global.h
+ C:/sgdk/inc/task_cst.h src/../inc/types.h

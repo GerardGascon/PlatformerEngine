@@ -1,12 +1,7 @@
 #include "../inc/types.h"
 
-//Index must be 0-7
-packedBools setPackedBool(packedBools bools, u16 index, bool state) {
-	if (state)
-		bools |= (state << index);
-	else
-		bools &= ~(1 << index);
-	return bools;
+AABB newAABB(s16 x1, s16 x2, s16 y1, s16 y2) {
+	return (AABB) { {x1, y1}, { x2, y2 } };
 }
 
 Vect2D_f16 newVector2D_f16(f16 x, f16 y) {
@@ -35,23 +30,3 @@ Vect2D_u16 newVector2D_u16(u16 x, u16 y) {
 Vect2D_u32 newVector2D_u32(u32 x, u32 y) {
 	return (Vect2D_u32) { x, y };
 }
-
-const u16 custom_palette_white[16] = {
-	0x0000,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE,
-	0x0EEE
-};

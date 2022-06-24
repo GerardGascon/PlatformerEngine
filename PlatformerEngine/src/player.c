@@ -9,13 +9,13 @@
 
 struct pBody playerBody;
 
-bool checkCollisions();
+void checkCollisions();
 void updateAnimations();
 
 const s16 coyoteTime = 10;
 s16 currentCoyoteTime;
-const s16 jumpPressedRemember = 10;
-s16 currentJumpPressedRembember;
+const s16 jumpBufferTime = 10;
+s16 currentJumpBufferTime;
 
 bool climbStairPressed;
 
@@ -24,7 +24,7 @@ u16 dyingSteps;
 const u16 dieDelay = 10;
 
 s16 stairLeftEdge;
-const u16 stairPositionOffset = 23;
+const u16 stairPositionOffset = 4;
 
 u16 currentAnimationFrame, currentAnimationStep;
 u16 lastAnimation;
@@ -38,18 +38,15 @@ void playerInit() {
 	SPR_setDepth(playerBody.sprite, -1);
 	PAL_setPalette(PLAYER_PALETTE, player_sprite.palette->data, DMA);
 
-	climbStairPressed = FALSE;
-	currentCoyoteTime = currentJumpPressedRembember = 0;
-
 	playerBody.globalPosition = playerBody.position = position;
 
 	AABB size = newAABB(4, 20, 4, 24);
 	playerBody.aabb = size;
-	playerBody.climbingStairAABB = newAABB(27, 38, size.min.y, size.max.y);
+	playerBody.climbingStairAABB = newAABB(8, 20, size.min.y, size.max.y);
 	playerBody.skinWidth = 7;
 
-	playerBody.centerOffset.x = (size.min.x + size.max.x) / 2;
-	playerBody.centerOffset.y = (size.min.y + size.max.y) / 2;
+	playerBody.centerOffset.x = ((size.min.x + size.max.x) >> 1);
+	playerBody.centerOffset.y = ((size.min.y + size.max.y) >> 1);
 
 	playerBody.speed = 2;
 	playerBody.climbingSpeed = 1;
@@ -58,9 +55,6 @@ void playerInit() {
 	playerBody.facingDirection = 1;
 	playerBody.acceleration = FIX16(.25);
 	playerBody.deceleration = FIX16(.2);
-
-	lastAnimation = playerBody.currentAnimation = currentAnimationFrame = currentAnimationStep = 0;
-	SPR_setAnim(playerBody.sprite, 0);
 }
 
 void playerInputChanged() {
@@ -73,25 +67,19 @@ void playerInputChanged() {
 			playerBody.input.x = 1;
 		}else if (state & BUTTON_LEFT) {
 			playerBody.input.x = -1;
-		}else {
-			if ((changed & BUTTON_RIGHT) | (changed & BUTTON_LEFT)) {
-				playerBody.input.x = 0;
-			}
+		}else if ((changed & BUTTON_RIGHT) | (changed & BUTTON_LEFT)) {
+			playerBody.input.x = 0;
 		}
-		if (changed & BUTTON_A) {
-			if (state & BUTTON_A) {
+		if (changed & (BUTTON_A | BUTTON_B | BUTTON_C)) {
+			if (state & (BUTTON_A | BUTTON_B | BUTTON_C)) {
 				if (playerBody.climbingStair) {
 					playerBody.climbingStair = FALSE;
 					climbStairPressed = FALSE;
 				}else {
-					currentJumpPressedRembember = jumpPressedRemember;
+					currentJumpBufferTime = jumpBufferTime;
 				}
-			}else {
-				if (playerBody.jumping) {
-					if (playerBody.velocity.y < 0) {
-						playerBody.velocity.y = fix16Mul(playerBody.velocity.y, FIX16(.5));
-					}
-				}
+			}else if (playerBody.jumping && playerBody.velocity.y < 0) {
+				playerBody.velocity.y = fix16Mul(playerBody.velocity.y, FIX16(.5));
 			}
 		}
 
@@ -101,10 +89,8 @@ void playerInputChanged() {
 				if (playerBody.climbingStair) {
 					playerBody.velocity.y = FIX16(playerBody.climbingSpeed);
 				}
-			}else {
-				if (playerBody.climbingStair) {
-					playerBody.velocity.y = 0;
-				}
+			}else if (playerBody.climbingStair) {
+				playerBody.velocity.y = 0;
 			}
 		}
 		if (changed & BUTTON_UP) {
@@ -134,14 +120,14 @@ void updatePlayer() {
 		climbStairPressed = FALSE;
 	}
 
-	if (currentCoyoteTime > 0 && currentJumpPressedRembember > 0) {
+	if (currentCoyoteTime > 0 && currentJumpBufferTime > 0) {
 		playerBody.jumping = TRUE;
 		playerBody.velocity.y = FIX16(-playerBody.jumpSpeed);
 
 		currentCoyoteTime = 0;
-		currentJumpPressedRembember = 0;
+		currentJumpBufferTime = 0;
 	}
-	currentJumpPressedRembember--;
+	currentJumpBufferTime--;
 
 	if (playerBody.climbingStair) {
 		playerBody.velocity.x = playerBody.velocity.fixX = 0;
@@ -179,11 +165,10 @@ void updatePlayer() {
 	playerBody.globalPosition.x += playerBody.velocity.x;
 	playerBody.globalPosition.y += fix16ToInt(playerBody.velocity.y);
 
-	if (!checkCollisions())
-		return;
+	checkCollisions();
 
-	playerBody.position.x = playerBody.globalPosition.x - camera.position.x;
-	playerBody.position.y = playerBody.globalPosition.y - camera.position.y;
+	playerBody.position.x = playerBody.globalPosition.x - cameraPosition.x;
+	playerBody.position.y = playerBody.globalPosition.y - cameraPosition.y;
 
 	if (!playerBody.collidingAgainstStair && playerBody.climbingStair) {
 		playerBody.climbingStair = FALSE;
@@ -193,6 +178,13 @@ void updatePlayer() {
 	updateAnimations();
 
 	SPR_setPosition(playerBody.sprite, playerBody.position.x, playerBody.position.y);
+
+	if (falling) {
+		dyingSteps++;
+		if(dyingSteps > dieDelay){
+			SYS_hardReset(); //Reset when falling off the screen
+		}
+	}
 }
 
 void updateAnimations() {
@@ -269,7 +261,7 @@ void setPlayerAnimation(u16 index) {
 	updatePlayerAnimations();
 }
 
-bool checkCollisions() {
+void checkCollisions() {
 	playerBody.collidingAgainstStair = FALSE;
 
 	//Create level limits
@@ -416,13 +408,22 @@ bool checkCollisions() {
 					}
 				}
 			}
-		}else if (yVelocity < 0) {
+		}else {
 			for (u8 i = 0; i <= tileBoundDifference.x; i++) {
 				s8 x = minTilePos.x + i;
 				u8 y = minTilePos.y;
 
 				u8 topTileValue = getTileValue(x, y);
-				if (topTileValue == LADDER_TILE) {
+				if (topTileValue == GROUND_TILE) {
+					if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
+						continue;
+
+					u16 upperEdgePos = getTileBottomEdge(y);
+					if (upperEdgePos < levelLimits.max.y) {
+						levelLimits.min.y = upperEdgePos;
+						break;
+					}
+				}else if (topTileValue == LADDER_TILE) {
 					stairLeftEdge = getTileLeftEdge(x);
 					playerBody.collidingAgainstStair = TRUE;
 				}
@@ -438,6 +439,7 @@ bool checkCollisions() {
 	if (levelLimits.max.y < playerBounds.max.y) {
 		if (levelLimits.max.y == 768) {
 			playerBody.onGround = FALSE;
+			falling = TRUE;
 		}else {
 			if (stairPos.x || stairPos.y) {
 				playerBody.onStair = TRUE;
@@ -476,8 +478,4 @@ bool checkCollisions() {
 			playerBody.globalPosition.y + playerBody.aabb.max.y
 		);
 	}
-
-	levelBounds = levelLimits;
-
-	return TRUE;
 }

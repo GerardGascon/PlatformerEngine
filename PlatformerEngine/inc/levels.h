@@ -13,6 +13,5 @@ typedef struct {
 }Level;
 
 void loadLevel();
-void generateScreen();
 
 extern u16 currentCurrencySpawnerEntity;
