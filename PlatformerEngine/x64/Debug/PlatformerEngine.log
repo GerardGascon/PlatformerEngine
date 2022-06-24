@@ -6,36 +6,36 @@
   java -jar C:/sgdk/bin/rescomp.jar res/resources.res res/resources.rs -dep out/res/resources.o
   ResComp 3.5 - SGDK Resource Compiler - Copyright 2022 (Stephane Dallongeville)
   
-  Resource: SPRITE player_sprite "player.png" 3 3 FAST
+  Resource: SPRITE player_sprite "player.png" 3 3 FAST 5
   --> executing plugin SPRITE...Sprite frame 'player_sprite_animation0_frame0' - 1 VDP sprites and 9 tiles
   Sprite frame at anim #1 frame #0 is a duplicate of player_sprite_animation0_frame0
   Sprite frame 'player_sprite_animation1_frame1' - 1 VDP sprites and 9 tiles
   Sprite frame 'player_sprite_animation2_frame0' - 1 VDP sprites and 9 tiles
    'player_sprite' raw size: 1350 bytes
   Resource: TILESET level_tileset "level.png" FAST ALL
-  --> executing plugin TILESET... 'level_tileset' raw size: 7048 bytes
+  --> executing plugin TILESET... 'level_tileset' raw size: 6920 bytes
   Resource: MAP level_map "level.png" level_tileset FAST 0
-  --> executing plugin MAP... 'level_map' raw size: 2640 bytes
-  MAP 'level_map' details: 1 tilesets, 80 metatiles, 30 blocks, block grid size = 6 x 6 - optimized = 6 x 6
+  --> executing plugin MAP... 'level_map' raw size: 2648 bytes
+  MAP 'level_map' details: 1 tilesets, 81 metatiles, 30 blocks, block grid size = 6 x 6 - optimized = 6 x 6
   Resource: PALETTE level_palette "level.png"
   --> executing plugin PALETTE... 'level_palette' raw size: 134 bytes
   
   'player_sprite_animation0_frame0_tileset_data' packed with LZ4W, size = 206 (72% - origin size = 288)
   'player_sprite_animation1_frame1_tileset_data' packed with LZ4W, size = 140 (49% - origin size = 288)
   'player_sprite_animation2_frame0_tileset_data' packed with LZ4W, size = 106 (37% - origin size = 288)
-  'level_tileset_data' packed with LZ4W, size = 2916 (41% - origin size = 7040)
-  'level_map_metatiles' not packed (size = 640)
-  'level_map_mapBlocks' packed with LZ4W, size = 748 (39% - origin size = 1920)
+  'level_tileset_data' packed with LZ4W, size = 2922 (42% - origin size = 6912)
+  'level_map_metatiles' not packed (size = 648)
+  'level_map_mapBlocks' packed with LZ4W, size = 742 (39% - origin size = 1920)
   'level_map_mapBlockIndexes' not packed (size = 36)
   
   res/resources.res summary:
   -------------
-  Binary data: 4964 bytes
-    Unpacked: 848 bytes
-    Packed: 4116 bytes (42% - origin size: 9824 bytes)
+  Binary data: 4972 bytes
+    Unpacked: 856 bytes
+    Packed: 4116 bytes (42% - origin size: 9696 bytes)
   Sprite metadata (all but tiles and palette data): 112 bytes
   Misc metadata (bitmap, image, tilemap, tileset, palette..): 44 bytes
-  Total: 5120 bytes (5 KB)
+  Total: 5128 bytes (5 KB)
   C:/sgdk/bin/mkdir.exe -p out/res/
   C:/sgdk/bin/gcc.exe -x assembler-with-cpp  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -c res/resources.rs -o out/res/resources.o
   C:/sgdk/bin/cp.exe res/resources.d out/res/resources.d

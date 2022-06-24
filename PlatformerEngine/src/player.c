@@ -5,8 +5,6 @@
 
 #include "../res/resources.h"
 
-#define PLAYER_FRAMERATE 5
-
 struct pBody playerBody;
 
 void checkCollisions();
@@ -26,28 +24,26 @@ const u16 dieDelay = 10;
 s16 stairLeftEdge;
 const u16 stairPositionOffset = 4;
 
-u16 currentAnimationFrame, currentAnimationStep;
-u16 lastAnimation;
-
 void playerInit() {
-	playerBody = (const struct pBody){ 0 };
-
-	Vect2D_s16 position = levelStartPos;
-
+	//Create the sprite and palette for the player
 	playerBody.sprite = SPR_addSprite(&player_sprite, levelStartPos.x, levelStartPos.y, TILE_ATTR(PLAYER_PALETTE, FALSE, FALSE, FALSE));
-	SPR_setDepth(playerBody.sprite, -1);
 	PAL_setPalette(PLAYER_PALETTE, player_sprite.palette->data, DMA);
 
-	playerBody.globalPosition = playerBody.position = position;
+	//Set the global position of the player, the local position will be updated once we are in the main loop
+	playerBody.globalPosition = levelStartPos;
 
-	AABB size = newAABB(4, 20, 4, 24);
-	playerBody.aabb = size;
-	playerBody.climbingStairAABB = newAABB(8, 20, size.min.y, size.max.y);
+	//We set collider size of the player
+	playerBody.aabb = newAABB(4, 20, 4, 24);
+	//This collider is thinner because if the width is >=16 it could interfere with the lateral walls
+	playerBody.climbingStairAABB = newAABB(8, 20, playerBody.aabb.min.y, playerBody.aabb.max.y);
+	//Skin width is used to avoid some wrong physics calculations because of the fall velocity
 	playerBody.skinWidth = 7;
 
-	playerBody.centerOffset.x = ((size.min.x + size.max.x) >> 1);
-	playerBody.centerOffset.y = ((size.min.y + size.max.y) >> 1);
+	//Calculate where's the center point of the player
+	playerBody.centerOffset.x = ((playerBody.aabb.min.x + playerBody.aabb.max.x) >> 1);
+	playerBody.centerOffset.y = ((playerBody.aabb.min.y + playerBody.aabb.max.y) >> 1);
 
+	//Default movement values
 	playerBody.speed = 2;
 	playerBody.climbingSpeed = 1;
 	playerBody.maxFallSpeed = 6;
@@ -62,7 +58,9 @@ void playerInputChanged() {
 	u16 state = input.state;
 	u16 changed = input.changed;
 
+	//We only read data from the joypad 1
 	if (joy == JOY_1) {
+		//Update x velocity
 		if (state & BUTTON_RIGHT) {
 			playerBody.input.x = 1;
 		}else if (state & BUTTON_LEFT) {
@@ -70,6 +68,9 @@ void playerInputChanged() {
 		}else if ((changed & BUTTON_RIGHT) | (changed & BUTTON_LEFT)) {
 			playerBody.input.x = 0;
 		}
+
+		//Jump button via jumpbuffer
+		//Also used to stop climbing the stairs
 		if (changed & (BUTTON_A | BUTTON_B | BUTTON_C)) {
 			if (state & (BUTTON_A | BUTTON_B | BUTTON_C)) {
 				if (playerBody.climbingStair) {
@@ -79,15 +80,20 @@ void playerInputChanged() {
 					currentJumpBufferTime = jumpBufferTime;
 				}
 			}else if (playerBody.jumping && playerBody.velocity.y < 0) {
+				//If the button is released we remove half of the velocity
 				playerBody.velocity.y = fix16Mul(playerBody.velocity.y, FIX16(.5));
 			}
 		}
 
+		//Down button is only used when it is climbing stair
 		if (changed & BUTTON_DOWN) {
 			if (state & BUTTON_DOWN) {
 				playerBody.input.y = 1;
 				if (playerBody.climbingStair) {
 					playerBody.velocity.y = FIX16(playerBody.climbingSpeed);
+				}else if (playerBody.onStair) {
+					playerBody.velocity.y = FIX16(playerBody.climbingSpeed);
+					playerBody.climbingStair = TRUE;
 				}
 			}else if (playerBody.climbingStair) {
 				playerBody.velocity.y = 0;
@@ -198,67 +204,17 @@ void updateAnimations() {
 
 	if (playerBody.velocity.s8y == 0 && !playerBody.climbingStair) {
 		if (playerBody.velocity.x != 0 && playerBody.runningAnim == FALSE && playerBody.onGround) {
-			playerBody.currentAnimation = 1;
-			if (lastAnimation != playerBody.currentAnimation)
-				currentAnimationFrame = currentAnimationStep = 0;
 			SPR_setAnim(playerBody.sprite, 1);
 			playerBody.runningAnim = TRUE;
 		}else if (playerBody.velocity.x == 0 && playerBody.onGround) {
-			playerBody.currentAnimation = 0;
-			if (lastAnimation != playerBody.currentAnimation)
-				currentAnimationFrame = currentAnimationStep = 0;
 			SPR_setAnim(playerBody.sprite, 0);
 			playerBody.runningAnim = FALSE;
 		}
 	}
 
 	if (playerBody.climbingStair) {
-		playerBody.currentAnimation = 2;
-		if (lastAnimation != playerBody.currentAnimation)
-			currentAnimationFrame = currentAnimationStep = 0;
 		SPR_setAnim(playerBody.sprite, 2);
 	}
-
-	lastAnimation = playerBody.currentAnimation;
-	updatePlayerAnimations();
-}
-bool updatePlayerAnimations() {
-	Animation* playerAnim = player_sprite.animations[playerBody.currentAnimation];
-	if (playerAnim->numFrame > 1) {
-		if (playerBody.climbingStair && playerBody.input.y != 0)
-			currentAnimationStep++;
-		else if (!playerBody.climbingStair)
-			currentAnimationStep++;
-
-		if (currentAnimationStep % PLAYER_FRAMERATE == 0) {
-			currentAnimationFrame++;
-
-			if (playerBody.climbingStair && playerBody.input.y == 0)
-				currentAnimationStep++;
-		}
-
-		if (currentAnimationFrame >= playerAnim->numFrame) {
-			currentAnimationFrame = currentAnimationStep = 0;
-			SPR_setFrame(playerBody.sprite, currentAnimationFrame);
-
-			return TRUE;
-		}else {
-			SPR_setFrame(playerBody.sprite, currentAnimationFrame);
-		}
-	}else {
-		SPR_setFrame(playerBody.sprite, 0);
-	}
-
-	return FALSE;
-}
-void setPlayerAnimation(u16 index) {
-	playerBody.currentAnimation = index;
-	if (lastAnimation != playerBody.currentAnimation) {
-		currentAnimationFrame = currentAnimationStep = 0;
-	}
-	SPR_setAnim(playerBody.sprite, index);
-	lastAnimation = playerBody.currentAnimation;
-	updatePlayerAnimations();
 }
 
 void checkCollisions() {
@@ -275,8 +231,7 @@ void checkCollisions() {
 			playerBody.globalPosition.y + playerBody.climbingStairAABB.min.y,
 			playerBody.globalPosition.y + playerBody.climbingStairAABB.max.y
 		);
-	}
-	else {
+	}else {
 		playerBounds = newAABB(
 			playerBody.globalPosition.x + playerBody.aabb.min.x,
 			playerBody.globalPosition.x + playerBody.aabb.max.x,
@@ -341,8 +296,8 @@ void checkCollisions() {
 
 	if (levelLimits.min.x > playerBounds.min.x) {
 		if (levelLimits.min.x == 0) {
-			playerBody.onGround = currentCoyoteTime > 0;
 			playerBody.velocity.x = playerBody.velocity.fixX = 0;
+			playerBody.globalPosition.x = levelLimits.min.x - playerBody.aabb.min.x;
 		}else {
 			playerBody.globalPosition.x = levelLimits.min.x - playerBody.aabb.min.x;
 			playerBody.velocity.x = playerBody.velocity.fixX = 0;
@@ -351,6 +306,7 @@ void checkCollisions() {
 	if (levelLimits.max.x < playerBounds.max.x) {
 		if (levelLimits.max.x == 768) {
 			playerBody.velocity.x = playerBody.velocity.fixX = 0;
+			playerBody.globalPosition.x = levelLimits.max.x - playerBody.aabb.max.x;
 		}else {
 			playerBody.globalPosition.x = levelLimits.max.x - playerBody.aabb.max.x;
 			playerBody.velocity.x = playerBody.velocity.fixX = 0;
