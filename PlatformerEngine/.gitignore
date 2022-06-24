@@ -2,7 +2,14 @@
 /[Mm]egaDriveProject/out/
 /[Mm]egaDriveProject/Debug/
 /[Dd]ebug/
-/[Oo]ut/
+
+out/res
+out/src
+rom_head.bin
+rom_head.o
+rom.out
+sega.o
+symbol.txt
 
 .vs/
 
