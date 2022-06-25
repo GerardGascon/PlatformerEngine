@@ -39,8 +39,7 @@ struct pBody {
 	struct {
 		fix16 fixX;
 		s16 x;
-		fix16 y;
-		s16 s8y;
+		fix16 fixY;
 	}velocity;
 
 	Vect2D_s16 input;

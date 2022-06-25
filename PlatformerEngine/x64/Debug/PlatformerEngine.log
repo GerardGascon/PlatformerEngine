@@ -1,63 +1,7 @@
 ﻿  C:/sgdk/bin/mkdir.exe -p src/boot
   C:/sgdk/bin/mkdir.exe -p out
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -c src/boot/rom_head.c -o out/rom_head.o
-  C:/sgdk/bin/objcopy.exe -O binary out/rom_head.o out/rom_head.bin
-  C:/sgdk/bin/gcc.exe -x assembler-with-cpp  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -c src/boot/sega.s -o out/sega.o
-  java -jar C:/sgdk/bin/rescomp.jar res/resources.res res/resources.rs -dep out/res/resources.o
-  ResComp 3.5 - SGDK Resource Compiler - Copyright 2022 (Stephane Dallongeville)
-  
-  Resource: SPRITE player_sprite "player.png" 3 3 FAST 5
-  --> executing plugin SPRITE...Sprite frame 'player_sprite_animation0_frame0' - 1 VDP sprites and 9 tiles
-  Sprite frame at anim #1 frame #0 is a duplicate of player_sprite_animation0_frame0
-  Sprite frame 'player_sprite_animation1_frame1' - 1 VDP sprites and 9 tiles
-  Sprite frame 'player_sprite_animation2_frame0' - 1 VDP sprites and 9 tiles
-   'player_sprite' raw size: 1350 bytes
-  Resource: TILESET level_tileset "level.png" FAST ALL
-  --> executing plugin TILESET... 'level_tileset' raw size: 6920 bytes
-  Resource: MAP level_map "level.png" level_tileset FAST 0
-  --> executing plugin MAP... 'level_map' raw size: 2648 bytes
-  MAP 'level_map' details: 1 tilesets, 81 metatiles, 30 blocks, block grid size = 6 x 6 - optimized = 6 x 6
-  Resource: PALETTE level_palette "level.png"
-  --> executing plugin PALETTE... 'level_palette' raw size: 134 bytes
-  
-  'player_sprite_animation0_frame0_tileset_data' packed with LZ4W, size = 206 (72% - origin size = 288)
-  'player_sprite_animation1_frame1_tileset_data' packed with LZ4W, size = 140 (49% - origin size = 288)
-  'player_sprite_animation2_frame0_tileset_data' packed with LZ4W, size = 106 (37% - origin size = 288)
-  'level_tileset_data' packed with LZ4W, size = 2922 (42% - origin size = 6912)
-  'level_map_metatiles' not packed (size = 648)
-  'level_map_mapBlocks' packed with LZ4W, size = 742 (39% - origin size = 1920)
-  'level_map_mapBlockIndexes' not packed (size = 36)
-  
-  res/resources.res summary:
-  -------------
-  Binary data: 4972 bytes
-    Unpacked: 856 bytes
-    Packed: 4116 bytes (42% - origin size: 9696 bytes)
-  Sprite metadata (all but tiles and palette data): 112 bytes
-  Misc metadata (bitmap, image, tilemap, tileset, palette..): 44 bytes
-  Total: 5128 bytes (5 KB)
-  C:/sgdk/bin/mkdir.exe -p out/res/
-  C:/sgdk/bin/gcc.exe -x assembler-with-cpp  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -c res/resources.rs -o out/res/resources.o
-  C:/sgdk/bin/cp.exe res/resources.d out/res/resources.d
-  C:/sgdk/bin/rm.exe res/resources.d
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/camera.c -o out/src/camera.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/global.c -o out/src/global.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/levelgenerator.c -o out/src/levelgenerator.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/levels.c -o out/src/levels.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/main.c -o out/src/main.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/map.c -o out/src/map.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/physics.c -o out/src/physics.o
   C:/sgdk/bin/mkdir.exe -p out/src/
   C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/player.c -o out/src/player.o
-  C:/sgdk/bin/mkdir.exe -p out/src/
-  C:/sgdk/bin/gcc.exe  -Wa,--register-prefix-optional,--bitwise-or -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions -Iinc -Isrc -Ires -IC:/sgdk/inc -IC:/sgdk/res -BC:/sgdk/bin -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -MMD -c src/types.c -o out/src/types.o
   echo "out/res/resources.o out/src/camera.o out/src/global.o out/src/levelgenerator.o out/src/levels.o out/src/main.o out/src/map.o out/src/physics.o out/src/player.o out/src/types.o" > out/cmd_
   C:/sgdk/bin/gcc.exe -BC:/sgdk/bin -n -T C:/sgdk/md.ld -nostdlib out/sega.o @out/cmd_ C:/sgdk/lib/libmd.a C:/sgdk/lib/libgcc.a -o out/rom.out -Wl,--gc-sections
 D:/apps/SGDK/src/sys.c(74,12): warning G84A22C35: type of 'main' does not match original declaration [-Wlto-type-mismatch]
@@ -77,4 +21,3 @@ D:/apps/SGDK/src/sys.c(74,12): warning G84A22C35: type of 'main' does not match 
   C:/sgdk/bin/objcopy.exe -O binary out/rom.out out/rom.bin
   java -jar C:/sgdk/bin/sizebnd.jar out/rom.bin -sizealign 131072 -checksum
   C:/sgdk/bin/nm.exe --plugin=liblto_plugin-0.dll -n out/rom.out > out/symbol.txt
-  rm res/resources.rs

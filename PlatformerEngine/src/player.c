@@ -79,24 +79,25 @@ void playerInputChanged() {
 				}else {
 					currentJumpBufferTime = jumpBufferTime;
 				}
-			}else if (playerBody.jumping && playerBody.velocity.y < 0) {
+			}else if (playerBody.jumping && playerBody.velocity.fixY < 0) {
 				//If the button is released we remove half of the velocity
-				playerBody.velocity.y = fix16Mul(playerBody.velocity.y, FIX16(.5));
+				playerBody.velocity.fixY = fix16Mul(playerBody.velocity.fixY, FIX16(.5));
 			}
 		}
 
-		//Down button is only used when it is climbing stair
+		//Down and up buttons are only used when it is climbing stair
+		//NOTE: Up direction is -1 and down direction is 1, this is because the Mega Drive draws the screen from top to bottom
 		if (changed & BUTTON_DOWN) {
 			if (state & BUTTON_DOWN) {
 				playerBody.input.y = 1;
 				if (playerBody.climbingStair) {
-					playerBody.velocity.y = FIX16(playerBody.climbingSpeed);
+					playerBody.velocity.fixY = FIX16(playerBody.climbingSpeed);
 				}else if (playerBody.onStair) {
-					playerBody.velocity.y = FIX16(playerBody.climbingSpeed);
+					playerBody.velocity.fixY = FIX16(playerBody.climbingSpeed);
 					playerBody.climbingStair = TRUE;
 				}
 			}else if (playerBody.climbingStair) {
-				playerBody.velocity.y = 0;
+				playerBody.velocity.fixY = 0;
 			}
 		}
 		if (changed & BUTTON_UP) {
@@ -104,7 +105,8 @@ void playerInputChanged() {
 				playerBody.input.y = -1;
 				if (playerBody.collidingAgainstStair && !playerBody.onStair) {
 					playerBody.climbingStair = TRUE;
-					playerBody.velocity.y = FIX16(-playerBody.climbingSpeed);
+					playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
+					KLog_U1("", playerBody.onStair);
 				}else {
 					climbStairPressed = TRUE;
 				}
@@ -112,7 +114,7 @@ void playerInputChanged() {
 				playerBody.input.y = 0;
 				climbStairPressed = FALSE;
 				if (playerBody.climbingStair) {
-					playerBody.velocity.y = 0;
+					playerBody.velocity.fixY = 0;
 				}
 			}
 		}
@@ -120,23 +122,28 @@ void playerInputChanged() {
 }
 
 void updatePlayer() {
+	//Check if the player wants to climb a stair
 	if (climbStairPressed && playerBody.collidingAgainstStair && !playerBody.onStair) {
 		playerBody.climbingStair = TRUE;
-		playerBody.velocity.y = FIX16(-playerBody.climbingSpeed);
+		playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
 		climbStairPressed = FALSE;
 	}
 
+	//Check if player wants to jump by looking the coyote time and jump buffer
 	if (currentCoyoteTime > 0 && currentJumpBufferTime > 0) {
 		playerBody.jumping = TRUE;
-		playerBody.velocity.y = FIX16(-playerBody.jumpSpeed);
+		playerBody.velocity.fixY = FIX16(-playerBody.jumpSpeed);
 
 		currentCoyoteTime = 0;
 		currentJumpBufferTime = 0;
 	}
-	currentJumpBufferTime--;
+	//The ground hasn't been checked yet so we only decrease the jump buffer time for now
+	currentJumpBufferTime = clamp((currentJumpBufferTime - 1), 0, jumpBufferTime); //Clamp to avoid underflowing, it is unlikely to happen but can happen
 
+	//If the player is climbing a stair, it only needs to go upward, if not, we apply horizontal movement
 	if (playerBody.climbingStair) {
 		playerBody.velocity.x = playerBody.velocity.fixX = 0;
+		playerBody.globalPosition.x = stairLeftEdge - stairPositionOffset;
 	}else {
 		if (playerBody.input.x > 0) {
 			if (playerBody.velocity.x != playerBody.speed)
@@ -156,44 +163,47 @@ void updatePlayer() {
 		playerBody.velocity.x = clamp(playerBody.velocity.x, -playerBody.speed, playerBody.speed);
 	}
 
-	if (playerBody.climbingStair) {
-		playerBody.globalPosition.x = stairLeftEdge - stairPositionOffset;
-	}
-
-	if (playerBody.onGround == FALSE && playerBody.climbingStair == FALSE) {
-		if (fix16ToInt(playerBody.velocity.y) <= playerBody.maxFallSpeed) {
-			playerBody.velocity.y = fix16Add(playerBody.velocity.y, gravityScale);
+	//Apply gravity with a terminal velocity
+	if (!playerBody.onGround && !playerBody.climbingStair) {
+		if (fix16ToInt(playerBody.velocity.fixY) <= playerBody.maxFallSpeed) {
+			playerBody.velocity.fixY = fix16Add(playerBody.velocity.fixY, gravityScale);
 		}else {
-			playerBody.velocity.y = FIX16(playerBody.maxFallSpeed);
+			playerBody.velocity.fixY = FIX16(playerBody.maxFallSpeed);
 		}
 	}
 
+	//Once all the input-related have been calculated, we apply the velocities to the global positions
 	playerBody.globalPosition.x += playerBody.velocity.x;
-	playerBody.globalPosition.y += fix16ToInt(playerBody.velocity.y);
+	playerBody.globalPosition.y += fix16ToInt(playerBody.velocity.fixY);
 
+	//Now we can check for collisions and correct those positions
 	checkCollisions();
 
-	playerBody.position.x = playerBody.globalPosition.x - cameraPosition.x;
-	playerBody.position.y = playerBody.globalPosition.y - cameraPosition.y;
-
+	//Now that the collisions have been checked, we know if the player is on a stair or not
 	if (!playerBody.collidingAgainstStair && playerBody.climbingStair) {
 		playerBody.climbingStair = FALSE;
 		climbStairPressed = FALSE;
 	}
 
+	//Once the positions are correct, we position the player taking into account the camera position
+	playerBody.position.x = playerBody.globalPosition.x - cameraPosition.x;
+	playerBody.position.y = playerBody.globalPosition.y - cameraPosition.y;
+	SPR_setPosition(playerBody.sprite, playerBody.position.x, playerBody.position.y);
+	
+	//Update the player animations
 	updateAnimations();
 
-	SPR_setPosition(playerBody.sprite, playerBody.position.x, playerBody.position.y);
-
+	//Reset when falling off the screen
 	if (falling) {
 		dyingSteps++;
 		if(dyingSteps > dieDelay){
-			SYS_hardReset(); //Reset when falling off the screen
+			SYS_hardReset();
 		}
 	}
 }
 
 void updateAnimations() {
+	//Sprite flip depending on the horizontal input
 	if (playerBody.input.x > 0) {
 		SPR_setHFlip(playerBody.sprite, TRUE);
 		playerBody.facingDirection = 1;
@@ -202,7 +212,8 @@ void updateAnimations() {
 		playerBody.facingDirection = -1;
 	}
 
-	if (playerBody.velocity.s8y == 0 && !playerBody.climbingStair) {
+	//If the player is on ground and not climbing the stair it can be idle or running
+	if (playerBody.velocity.fixY == 0 && !playerBody.climbingStair) {
 		if (playerBody.velocity.x != 0 && playerBody.runningAnim == FALSE && playerBody.onGround) {
 			SPR_setAnim(playerBody.sprite, 1);
 			playerBody.runningAnim = TRUE;
@@ -212,12 +223,14 @@ void updateAnimations() {
 		}
 	}
 
+	//Climb animation
 	if (playerBody.climbingStair) {
 		SPR_setAnim(playerBody.sprite, 2);
 	}
 }
 
 void checkCollisions() {
+	//As we now have to check for collisions, we will later check if it is true or false, but for now it is false
 	playerBody.collidingAgainstStair = FALSE;
 
 	//Create level limits
@@ -239,6 +252,8 @@ void checkCollisions() {
 			playerBody.globalPosition.y + playerBody.aabb.max.y
 		);
 	}
+
+	//We can see this variables as a way to avoid thinking that a ground tile is a wall tile
 	s16 playerHeadPos = playerBody.aabb.min.y + playerBody.skinWidth + playerBody.globalPosition.y;
 	s16 playerFeetPos = playerBody.aabb.max.y - playerBody.skinWidth + playerBody.globalPosition.y;
 
@@ -246,21 +261,9 @@ void checkCollisions() {
 	Vect2D_u8 minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
 	Vect2D_u8 maxTilePos = posToTile(newVector2D_s16(playerBounds.max.x, playerBounds.max.y));
 
-	Vect2D_u8 tileBoundDifference = newVector2D_u8(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y);
-
-	int yVelocity = fix16ToInt(playerBody.velocity.y);
-	playerBody.velocity.s8y = yVelocity;
-
-	bool anyOnFloor = FALSE;
-	for (u8 i = 0; i <= tileBoundDifference.x; i++) {
-		if (getTileValue(minTilePos.x + i, maxTilePos.y) == 1 || getTileValue(minTilePos.x + i, maxTilePos.y) == 3) {
-			if (getTileTopEdge(maxTilePos.y) >= playerFeetPos) {
-				anyOnFloor = TRUE;
-			}
-		}
-	}
-	if (anyOnFloor == FALSE)
-		tileBoundDifference.y++;
+	//Used to limit how many tiles we have to check for collision
+	//The +1 is for ensuring that we check for ground tiles
+	Vect2D_u16 tileBoundDifference = newVector2D_u16(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y + 1);
 
 	for (u8 i = 0; i < tileBoundDifference.y; i++) {
 		u8 rx = maxTilePos.x;
@@ -333,66 +336,63 @@ void checkCollisions() {
 	minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
 	maxTilePos = posToTile(newVector2D_s16(playerBounds.max.x - 1, playerBounds.max.y));
 
-	tileBoundDifference = newVector2D_u8(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y);
+	tileBoundDifference = newVector2D_u16(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y);
 	Vect2D_u16 stairPos = newVector2D_u16(0, 0);
 
-	if (yVelocity != 0) {
-		if (yVelocity > 0) {
-			for (u8 i = 0; i <= tileBoundDifference.x; i++) {
-				u8 x = minTilePos.x + i;
-				u8 y = maxTilePos.y;
+	if (playerBody.velocity.fixY >= 0) {
+		for (u16 i = 0; i <= tileBoundDifference.x; i++) {
+			s16 x = minTilePos.x + i;
+			u16 y = maxTilePos.y;
 
-				u8 bottomTileValue = getTileValue(x, y);
-				if (bottomTileValue == GROUND_TILE || bottomTileValue == ONE_WAY_PLATFORM_TILE) {
-					if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
-						continue;
+			u16 bottomTileValue = getTileValue(x, y);
+			if (bottomTileValue == GROUND_TILE || bottomTileValue == ONE_WAY_PLATFORM_TILE) {
+				if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
+					continue;
 
-					u16 bottomEdgePos = getTileTopEdge(y);
-					if (bottomEdgePos < levelLimits.max.y) {
-						levelLimits.max.y = bottomEdgePos;
-						break;
-					}
-				}else if (bottomTileValue == LADDER_TILE) {
-					stairLeftEdge = getTileLeftEdge(x);
-					playerBody.collidingAgainstStair = TRUE;
+				u16 bottomEdgePos = getTileTopEdge(y);
+				if (bottomEdgePos < levelLimits.max.y) {
+					levelLimits.max.y = bottomEdgePos;
+				}
+			}else if (bottomTileValue == LADDER_TILE) {
+				stairLeftEdge = getTileLeftEdge(x);
+				playerBody.collidingAgainstStair = TRUE;
 
-					u16 bottomEdgePos = getTileTopEdge(y);
-					if (bottomEdgePos < levelLimits.max.y && bottomEdgePos > playerFeetPos && !playerBody.climbingStair && getTileValue(x, y - 1) != 2) {
-						stairPos = newVector2D_u16(x, y);
-						levelLimits.max.y = bottomEdgePos;
-						break;
-					}
+				u16 bottomEdgePos = getTileTopEdge(y);
+				if (bottomEdgePos <= levelLimits.max.y && bottomEdgePos > playerFeetPos && !playerBody.climbingStair && getTileValue(x, y - 1) != LADDER_TILE) {
+					stairPos = newVector2D_u16(x, y);
+					levelLimits.max.y = bottomEdgePos;
+					break;
 				}
 			}
-		}else {
-			for (u8 i = 0; i <= tileBoundDifference.x; i++) {
-				s8 x = minTilePos.x + i;
-				u8 y = minTilePos.y;
+		}
+	}else {
+		for (u16 i = 0; i <= tileBoundDifference.x; i++) {
+			s16 x = minTilePos.x + i;
+			u16 y = minTilePos.y;
 
-				u8 topTileValue = getTileValue(x, y);
-				if (topTileValue == GROUND_TILE) {
-					if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
-						continue;
+			u16 topTileValue = getTileValue(x, y);
+			if (topTileValue == GROUND_TILE) {
+				if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
+					continue;
 
-					u16 upperEdgePos = getTileBottomEdge(y);
-					if (upperEdgePos < levelLimits.max.y) {
-						levelLimits.min.y = upperEdgePos;
-						break;
-					}
-				}else if (topTileValue == LADDER_TILE) {
-					stairLeftEdge = getTileLeftEdge(x);
-					playerBody.collidingAgainstStair = TRUE;
+				u16 upperEdgePos = getTileBottomEdge(y);
+				if (upperEdgePos < levelLimits.max.y) {
+					levelLimits.min.y = upperEdgePos;
+					break;
 				}
+			}else if (topTileValue == LADDER_TILE) {
+				stairLeftEdge = getTileLeftEdge(x);
+				playerBody.collidingAgainstStair = TRUE;
 			}
 		}
 	}
 
 	if (levelLimits.min.y > playerBounds.min.y) {
 		playerBody.globalPosition.y = levelLimits.min.y - playerBody.aabb.min.y;
-		playerBody.velocity.s8y = playerBody.velocity.y = 0;
+		playerBody.velocity.fixY = 0;
 	}
 
-	if (levelLimits.max.y < playerBounds.max.y) {
+	if (levelLimits.max.y <= playerBounds.max.y) {
 		if (levelLimits.max.y == 768) {
 			playerBody.onGround = FALSE;
 			falling = TRUE;
@@ -402,20 +402,19 @@ void checkCollisions() {
 			}else {
 				playerBody.onStair = FALSE;
 			}
-
 			playerBody.onGround = TRUE;
 			playerBody.climbingStair = FALSE;
 			currentCoyoteTime = coyoteTime;
 			playerBody.jumping = FALSE;
 			playerBody.globalPosition.y = levelLimits.max.y - playerBody.aabb.max.y;
-			playerBody.velocity.s8y = playerBody.velocity.y = 0;
+			playerBody.velocity.fixY = 0;
 		}
 	}else {
 		playerBody.onStair = playerBody.onGround = FALSE;
 		currentCoyoteTime--;
 	}
 
-	if (playerBody.velocity.y > FIX16(1)) {
+	if (playerBody.velocity.fixY > FIX16(1)) {
 		playerBody.jumping = TRUE;
 	}
 
