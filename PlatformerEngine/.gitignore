@@ -19,3 +19,4 @@ cloc-1.90.exe
 *.vcxproj.filters
 *.vcxproj.user
 *.sln
+/x64/
