@@ -33,7 +33,7 @@ void generateCollisionMap(const u8 map[][48]) {
 	}
 }
 
-u8 getTileValue(s16 x, s16 y) {
+u16 getTileValue(s16 x, s16 y) {
 	if (x >= roomTileSize.x || x < 0 || y < 0 || y >= roomTileSize.y)
 		return 0;
 

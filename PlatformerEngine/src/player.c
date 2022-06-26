@@ -106,7 +106,6 @@ void playerInputChanged() {
 				if (playerBody.collidingAgainstStair && !playerBody.onStair) {
 					playerBody.climbingStair = TRUE;
 					playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
-					KLog_U1("", playerBody.onStair);
 				}else {
 					climbStairPressed = TRUE;
 				}
@@ -254,24 +253,30 @@ void checkCollisions() {
 	}
 
 	//We can see this variables as a way to avoid thinking that a ground tile is a wall tile
-	s16 playerHeadPos = playerBody.aabb.min.y + playerBody.skinWidth + playerBody.globalPosition.y;
-	s16 playerFeetPos = playerBody.aabb.max.y - playerBody.skinWidth + playerBody.globalPosition.y;
+	//Skin width is only needed in case the player has a vertical velocity
+	s16 playerHeadPos = playerBody.aabb.min.y + (playerBody.velocity.fixY != 0 ? playerBody.skinWidth : 0) + playerBody.globalPosition.y;
+	s16 playerFeetPos = playerBody.aabb.max.y - (playerBody.velocity.fixY != 0 ? playerBody.skinWidth : 0) + playerBody.globalPosition.y;
 
 	//Positions in tiles
-	Vect2D_u8 minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
-	Vect2D_u8 maxTilePos = posToTile(newVector2D_s16(playerBounds.max.x, playerBounds.max.y));
+	Vect2D_u16 minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
+	Vect2D_u16 maxTilePos = posToTile(newVector2D_s16(playerBounds.max.x, playerBounds.max.y));
 
 	//Used to limit how many tiles we have to check for collision
-	//The +1 is for ensuring that we check for ground tiles
-	Vect2D_u16 tileBoundDifference = newVector2D_u16(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y + 1);
+	Vect2D_u16 tileBoundDifference = newVector2D_u16(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y);
 
-	for (u8 i = 0; i < tileBoundDifference.y; i++) {
-		u8 rx = maxTilePos.x;
-		u8 ry = minTilePos.y + i;
+	//First we check for horizontal collisions
+	for (u16 i = 0; i <= tileBoundDifference.y; i++) {
+		//Height position constant as a helper
+		const u16 y = minTilePos.y + i;
 
-		u8 rTileValue = getTileValue(rx, ry);
+		//Right position constant as a helper
+		const u16 rx = maxTilePos.x;
+
+		u16 rTileValue = getTileValue(rx, y);
+		//After getting the tile value, we check if that is one of whom we can collide/trigger with horizontally
 		if (rTileValue == GROUND_TILE) {
-			AABB tileBounds = getTileBounds(rx, ry);
+			AABB tileBounds = getTileBounds(rx, y);
+			//Before taking that tile as a wall, we have to check if that is within the player hitbox, e.g. not seeing ground as a wall
 			if (tileBounds.min.x < levelLimits.max.x && tileBounds.min.y < playerFeetPos && tileBounds.max.y > playerHeadPos) {
 				levelLimits.max.x = tileBounds.min.x;
 				break;
@@ -281,12 +286,13 @@ void checkCollisions() {
 			playerBody.collidingAgainstStair = TRUE;
 		}
 
-		s8 lx = minTilePos.x;
-		s8 ly = minTilePos.y + i;
+		//Left position constant as a helper
+		const s16 lx = minTilePos.x;
 
-		u8 lTileValue = getTileValue(lx, ly);
+		u16 lTileValue = getTileValue(lx, y);
+		//We do the same here but for the left side
 		if (lTileValue == GROUND_TILE) {
-			AABB tileBounds = getTileBounds(lx, ly);
+			AABB tileBounds = getTileBounds(lx, y);
 			if (tileBounds.max.x > levelLimits.min.x && tileBounds.min.y < playerFeetPos && tileBounds.max.y > playerHeadPos) {
 				levelLimits.min.x = tileBounds.max.x;
 				break;
@@ -297,25 +303,17 @@ void checkCollisions() {
 		}
 	}
 
+	//After checking for horizontal positions we can modify the positions if the player is colliding
 	if (levelLimits.min.x > playerBounds.min.x) {
-		if (levelLimits.min.x == 0) {
-			playerBody.velocity.x = playerBody.velocity.fixX = 0;
-			playerBody.globalPosition.x = levelLimits.min.x - playerBody.aabb.min.x;
-		}else {
-			playerBody.globalPosition.x = levelLimits.min.x - playerBody.aabb.min.x;
-			playerBody.velocity.x = playerBody.velocity.fixX = 0;
-		}
+		playerBody.globalPosition.x = levelLimits.min.x - playerBody.aabb.min.x;
+		playerBody.velocity.x = playerBody.velocity.fixX = 0;
 	}
 	if (levelLimits.max.x < playerBounds.max.x) {
-		if (levelLimits.max.x == 768) {
-			playerBody.velocity.x = playerBody.velocity.fixX = 0;
-			playerBody.globalPosition.x = levelLimits.max.x - playerBody.aabb.max.x;
-		}else {
-			playerBody.globalPosition.x = levelLimits.max.x - playerBody.aabb.max.x;
-			playerBody.velocity.x = playerBody.velocity.fixX = 0;
-		}
+		playerBody.globalPosition.x = levelLimits.max.x - playerBody.aabb.max.x;
+		playerBody.velocity.x = playerBody.velocity.fixX = 0;
 	}
 
+	//Then, we modify the player position so we can use them to check for vertical collisions
 	if (playerBody.climbingStair) {
 		playerBounds = newAABB(
 			playerBody.globalPosition.x + playerBody.climbingStairAABB.min.x,
@@ -323,8 +321,7 @@ void checkCollisions() {
 			playerBody.globalPosition.y + playerBody.climbingStairAABB.min.y,
 			playerBody.globalPosition.y + playerBody.climbingStairAABB.max.y
 		);
-	}
-	else {
+	}else {
 		playerBounds = newAABB(
 			playerBody.globalPosition.x + playerBody.aabb.min.x,
 			playerBody.globalPosition.x + playerBody.aabb.max.x,
@@ -333,17 +330,20 @@ void checkCollisions() {
 		);
 	}
 
+	//And do the same to the variables that are used to check for them
 	minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
 	maxTilePos = posToTile(newVector2D_s16(playerBounds.max.x - 1, playerBounds.max.y));
-
 	tileBoundDifference = newVector2D_u16(maxTilePos.x - minTilePos.x, maxTilePos.y - minTilePos.y);
-	Vect2D_u16 stairPos = newVector2D_u16(0, 0);
+	
+	bool onStair = FALSE;
 
+	//To avoid having troubles with player snapping to ground ignoring the upward velocity, we separate top and bottom collisions depending on the velocity
 	if (playerBody.velocity.fixY >= 0) {
 		for (u16 i = 0; i <= tileBoundDifference.x; i++) {
 			s16 x = minTilePos.x + i;
 			u16 y = maxTilePos.y;
 
+			//This is the exact same method that we use for horizontal collisions
 			u16 bottomTileValue = getTileValue(x, y);
 			if (bottomTileValue == GROUND_TILE || bottomTileValue == ONE_WAY_PLATFORM_TILE) {
 				if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
@@ -358,8 +358,9 @@ void checkCollisions() {
 				playerBody.collidingAgainstStair = TRUE;
 
 				u16 bottomEdgePos = getTileTopEdge(y);
-				if (bottomEdgePos <= levelLimits.max.y && bottomEdgePos > playerFeetPos && !playerBody.climbingStair && getTileValue(x, y - 1) != LADDER_TILE) {
-					stairPos = newVector2D_u16(x, y);
+				//Only in this case we check for ladder collisions, as we need them to climb them down
+				if (bottomEdgePos <= levelLimits.max.y && bottomEdgePos >= playerFeetPos && !playerBody.climbingStair && getTileValue(x, y - 1) != LADDER_TILE) {
+					onStair = TRUE;
 					levelLimits.max.y = bottomEdgePos;
 					break;
 				}
@@ -370,6 +371,7 @@ void checkCollisions() {
 			s16 x = minTilePos.x + i;
 			u16 y = minTilePos.y;
 
+			//And the same once again
 			u16 topTileValue = getTileValue(x, y);
 			if (topTileValue == GROUND_TILE) {
 				if (getTileRightEdge(x) == levelLimits.min.x || getTileLeftEdge(x) == levelLimits.max.x)
@@ -387,21 +389,16 @@ void checkCollisions() {
 		}
 	}
 
+	//Now we modify the player position and some properties if necessary
 	if (levelLimits.min.y > playerBounds.min.y) {
 		playerBody.globalPosition.y = levelLimits.min.y - playerBody.aabb.min.y;
 		playerBody.velocity.fixY = 0;
 	}
-
 	if (levelLimits.max.y <= playerBounds.max.y) {
 		if (levelLimits.max.y == 768) {
-			playerBody.onGround = FALSE;
 			falling = TRUE;
 		}else {
-			if (stairPos.x || stairPos.y) {
-				playerBody.onStair = TRUE;
-			}else {
-				playerBody.onStair = FALSE;
-			}
+			playerBody.onStair = onStair;
 			playerBody.onGround = TRUE;
 			playerBody.climbingStair = FALSE;
 			currentCoyoteTime = coyoteTime;
@@ -413,24 +410,5 @@ void checkCollisions() {
 		playerBody.onStair = playerBody.onGround = FALSE;
 		currentCoyoteTime--;
 	}
-
-	if (playerBody.velocity.fixY > FIX16(1)) {
-		playerBody.jumping = TRUE;
-	}
-
-	if (playerBody.climbingStair) {
-		playerBounds = newAABB(
-			playerBody.globalPosition.x + playerBody.climbingStairAABB.min.x,
-			playerBody.globalPosition.x + playerBody.climbingStairAABB.max.x,
-			playerBody.globalPosition.y + playerBody.climbingStairAABB.min.y,
-			playerBody.globalPosition.y + playerBody.climbingStairAABB.max.y
-		);
-	}else {
-		playerBounds = newAABB(
-			playerBody.globalPosition.x + playerBody.aabb.min.x,
-			playerBody.globalPosition.x + playerBody.aabb.max.x,
-			playerBody.globalPosition.y + playerBody.aabb.min.y,
-			playerBody.globalPosition.y + playerBody.aabb.max.y
-		);
-	}
+	//This time we don't need to update the playerBounds as they will be updated at the beginning of the function the next frame
 }
