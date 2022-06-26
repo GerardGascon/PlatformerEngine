@@ -25,16 +25,12 @@ struct pBody {
 	bool onGround;
 	bool onStair;
 	bool jumping;
-	bool collidingAgainstStair;
+	bool falling;
 	bool climbingStair;
-
-	bool runningAnim;
 
 	Vect2D_s16 position;
 	Vect2D_s16 globalPosition;
 	Vect2D_u16 centerOffset;
-
-	u16 skinWidth;
 
 	struct {
 		fix16 fixX;

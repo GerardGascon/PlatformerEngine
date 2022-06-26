@@ -16,10 +16,13 @@ const s16 jumpBufferTime = 10;
 s16 currentJumpBufferTime;
 
 bool climbStairPressed;
+bool collidingAgainstStair;
+bool runningAnim;
 
-bool falling;
 u16 dyingSteps;
 const u16 dieDelay = 10;
+
+const u16 oneWayPlatformErrorCorrection = 5;
 
 s16 stairLeftEdge;
 const u16 stairPositionOffset = 4;
@@ -36,8 +39,6 @@ void playerInit() {
 	playerBody.aabb = newAABB(4, 20, 4, 24);
 	//This collider is thinner because if the width is >=16 it could interfere with the lateral walls
 	playerBody.climbingStairAABB = newAABB(8, 20, playerBody.aabb.min.y, playerBody.aabb.max.y);
-	//Skin width is used to avoid some wrong physics calculations because of the fall velocity
-	playerBody.skinWidth = 7;
 
 	//Calculate where's the center point of the player
 	playerBody.centerOffset.x = ((playerBody.aabb.min.x + playerBody.aabb.max.x) >> 1);
@@ -103,7 +104,7 @@ void playerInputChanged() {
 		if (changed & BUTTON_UP) {
 			if (state & BUTTON_UP) {
 				playerBody.input.y = -1;
-				if (playerBody.collidingAgainstStair && !playerBody.onStair) {
+				if (collidingAgainstStair && !playerBody.onStair) {
 					playerBody.climbingStair = TRUE;
 					playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
 				}else {
@@ -122,7 +123,7 @@ void playerInputChanged() {
 
 void updatePlayer() {
 	//Check if the player wants to climb a stair
-	if (climbStairPressed && playerBody.collidingAgainstStair && !playerBody.onStair) {
+	if (climbStairPressed && collidingAgainstStair && !playerBody.onStair) {
 		playerBody.climbingStair = TRUE;
 		playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
 		climbStairPressed = FALSE;
@@ -158,8 +159,7 @@ void updatePlayer() {
 			else
 				playerBody.velocity.fixX = 0;
 		}
-		playerBody.velocity.x = fix16ToInt(playerBody.velocity.fixX);
-		playerBody.velocity.x = clamp(playerBody.velocity.x, -playerBody.speed, playerBody.speed);
+		playerBody.velocity.x = clamp(fix16ToInt(playerBody.velocity.fixX), -playerBody.speed, playerBody.speed);
 	}
 
 	//Apply gravity with a terminal velocity
@@ -179,7 +179,7 @@ void updatePlayer() {
 	checkCollisions();
 
 	//Now that the collisions have been checked, we know if the player is on a stair or not
-	if (!playerBody.collidingAgainstStair && playerBody.climbingStair) {
+	if (!collidingAgainstStair && playerBody.climbingStair) {
 		playerBody.climbingStair = FALSE;
 		climbStairPressed = FALSE;
 	}
@@ -193,7 +193,7 @@ void updatePlayer() {
 	updateAnimations();
 
 	//Reset when falling off the screen
-	if (falling) {
+	if (playerBody.falling) {
 		dyingSteps++;
 		if(dyingSteps > dieDelay){
 			SYS_hardReset();
@@ -213,12 +213,12 @@ void updateAnimations() {
 
 	//If the player is on ground and not climbing the stair it can be idle or running
 	if (playerBody.velocity.fixY == 0 && !playerBody.climbingStair) {
-		if (playerBody.velocity.x != 0 && playerBody.runningAnim == FALSE && playerBody.onGround) {
+		if (playerBody.velocity.x != 0 && runningAnim == FALSE && playerBody.onGround) {
 			SPR_setAnim(playerBody.sprite, 1);
-			playerBody.runningAnim = TRUE;
+			runningAnim = TRUE;
 		}else if (playerBody.velocity.x == 0 && playerBody.onGround) {
 			SPR_setAnim(playerBody.sprite, 0);
-			playerBody.runningAnim = FALSE;
+			runningAnim = FALSE;
 		}
 	}
 
@@ -230,7 +230,7 @@ void updateAnimations() {
 
 void checkCollisions() {
 	//As we now have to check for collisions, we will later check if it is true or false, but for now it is false
-	playerBody.collidingAgainstStair = FALSE;
+	collidingAgainstStair = FALSE;
 
 	//Create level limits
 	AABB levelLimits = roomSize;
@@ -253,9 +253,10 @@ void checkCollisions() {
 	}
 
 	//We can see this variables as a way to avoid thinking that a ground tile is a wall tile
-	//Skin width is only needed in case the player has a vertical velocity
-	s16 playerHeadPos = playerBody.aabb.min.y + (playerBody.velocity.fixY != 0 ? playerBody.skinWidth : 0) + playerBody.globalPosition.y;
-	s16 playerFeetPos = playerBody.aabb.max.y - (playerBody.velocity.fixY != 0 ? playerBody.skinWidth : 0) + playerBody.globalPosition.y;
+	//Skin width (yIntVelocity) changes depending on the vertical velocity
+	s16 yIntVelocity = fix16ToRoundedInt(playerBody.velocity.fixY);
+	s16 playerHeadPos = playerBody.aabb.min.y - yIntVelocity + playerBody.globalPosition.y;
+	s16 playerFeetPos = playerBody.aabb.max.y - yIntVelocity + playerBody.globalPosition.y;
 
 	//Positions in tiles
 	Vect2D_u16 minTilePos = posToTile(newVector2D_s16(playerBounds.min.x, playerBounds.min.y));
@@ -283,7 +284,7 @@ void checkCollisions() {
 			}
 		}else if (rTileValue == LADDER_TILE) {
 			stairLeftEdge = getTileLeftEdge(rx);
-			playerBody.collidingAgainstStair = TRUE;
+			collidingAgainstStair = TRUE;
 		}
 
 		//Left position constant as a helper
@@ -299,7 +300,7 @@ void checkCollisions() {
 			}
 		}else if (lTileValue == LADDER_TILE) {
 			stairLeftEdge = getTileLeftEdge(lx);
-			playerBody.collidingAgainstStair = TRUE;
+			collidingAgainstStair = TRUE;
 		}
 	}
 
@@ -338,7 +339,7 @@ void checkCollisions() {
 	bool onStair = FALSE;
 
 	//To avoid having troubles with player snapping to ground ignoring the upward velocity, we separate top and bottom collisions depending on the velocity
-	if (playerBody.velocity.fixY >= 0) {
+	if (yIntVelocity >= 0) {
 		for (u16 i = 0; i <= tileBoundDifference.x; i++) {
 			s16 x = minTilePos.x + i;
 			u16 y = maxTilePos.y;
@@ -350,12 +351,13 @@ void checkCollisions() {
 					continue;
 
 				u16 bottomEdgePos = getTileTopEdge(y);
-				if (bottomEdgePos < levelLimits.max.y) {
+				//The error correction is used to add some extra width pixels in case the player isn't high enough by just some of them
+				if (bottomEdgePos < levelLimits.max.y && bottomEdgePos >= (playerFeetPos - oneWayPlatformErrorCorrection)) {
 					levelLimits.max.y = bottomEdgePos;
 				}
 			}else if (bottomTileValue == LADDER_TILE) {
 				stairLeftEdge = getTileLeftEdge(x);
-				playerBody.collidingAgainstStair = TRUE;
+				collidingAgainstStair = TRUE;
 
 				u16 bottomEdgePos = getTileTopEdge(y);
 				//Only in this case we check for ladder collisions, as we need them to climb them down
@@ -384,7 +386,7 @@ void checkCollisions() {
 				}
 			}else if (topTileValue == LADDER_TILE) {
 				stairLeftEdge = getTileLeftEdge(x);
-				playerBody.collidingAgainstStair = TRUE;
+				collidingAgainstStair = TRUE;
 			}
 		}
 	}
@@ -396,7 +398,7 @@ void checkCollisions() {
 	}
 	if (levelLimits.max.y <= playerBounds.max.y) {
 		if (levelLimits.max.y == 768) {
-			falling = TRUE;
+			playerBody.falling = TRUE;
 		}else {
 			playerBody.onStair = onStair;
 			playerBody.onGround = TRUE;
