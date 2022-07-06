@@ -15,7 +15,6 @@ s16 currentCoyoteTime;
 const s16 jumpBufferTime = 10;
 s16 currentJumpBufferTime;
 
-bool climbStairPressed;
 bool collidingAgainstStair;
 bool runningAnim;
 
@@ -52,6 +51,9 @@ void playerInit() {
 	playerBody.facingDirection = 1;
 	playerBody.acceleration = FIX16(.25);
 	playerBody.deceleration = FIX16(.2);
+
+	//Setup the jump SFX with an index between 64 and 255
+	XGM_setPCM(64, jump, sizeof(jump));
 }
 
 void playerInputChanged() {
@@ -76,7 +78,6 @@ void playerInputChanged() {
 			if (state & (BUTTON_A | BUTTON_B | BUTTON_C)) {
 				if (playerBody.climbingStair) {
 					playerBody.climbingStair = FALSE;
-					climbStairPressed = FALSE;
 				}else {
 					currentJumpBufferTime = jumpBufferTime;
 				}
@@ -97,8 +98,11 @@ void playerInputChanged() {
 					playerBody.velocity.fixY = FIX16(playerBody.climbingSpeed);
 					playerBody.climbingStair = TRUE;
 				}
-			}else if (playerBody.climbingStair) {
-				playerBody.velocity.fixY = 0;
+			}else {
+				playerBody.input.y = 0;
+				if (playerBody.climbingStair) {
+					playerBody.velocity.fixY = 0;
+				}
 			}
 		}
 		if (changed & BUTTON_UP) {
@@ -107,12 +111,9 @@ void playerInputChanged() {
 				if (collidingAgainstStair && !playerBody.onStair) {
 					playerBody.climbingStair = TRUE;
 					playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
-				}else {
-					climbStairPressed = TRUE;
 				}
 			}else {
 				playerBody.input.y = 0;
-				climbStairPressed = FALSE;
 				if (playerBody.climbingStair) {
 					playerBody.velocity.fixY = 0;
 				}
@@ -123,15 +124,16 @@ void playerInputChanged() {
 
 void updatePlayer() {
 	//Check if the player wants to climb a stair
-	if (climbStairPressed && collidingAgainstStair && !playerBody.onStair) {
+	if(collidingAgainstStair && ((playerBody.onStair && playerBody.input.y > 0) || (!playerBody.onStair && playerBody.input.y < 0))){
 		playerBody.climbingStair = TRUE;
-		playerBody.velocity.fixY = FIX16(-playerBody.climbingSpeed);
-		climbStairPressed = FALSE;
+		playerBody.velocity.fixY = FIX16(playerBody.climbingSpeed * playerBody.input.y);
 	}
 
 	//Check if player wants to jump by looking the coyote time and jump buffer
 	if (currentCoyoteTime > 0 && currentJumpBufferTime > 0) {
 		playerBody.jumping = TRUE;
+		//Play the SFX with the index 64 (jump sfx) with the highest priority
+		XGM_startPlayPCM(64, 15, SOUND_PCM_CH1);
 		playerBody.velocity.fixY = FIX16(-playerBody.jumpSpeed);
 
 		currentCoyoteTime = 0;
@@ -181,7 +183,7 @@ void updatePlayer() {
 	//Now that the collisions have been checked, we know if the player is on a stair or not
 	if (!collidingAgainstStair && playerBody.climbingStair) {
 		playerBody.climbingStair = FALSE;
-		climbStairPressed = FALSE;
+		playerBody.input.y = 0;
 	}
 
 	//Once the positions are correct, we position the player taking into account the camera position
@@ -357,11 +359,11 @@ void checkCollisions() {
 				}
 			}else if (bottomTileValue == LADDER_TILE) {
 				stairLeftEdge = getTileLeftEdge(x);
-				collidingAgainstStair = TRUE;
 
 				u16 bottomEdgePos = getTileTopEdge(y);
 				//Only in this case we check for ladder collisions, as we need them to climb them down
 				if (bottomEdgePos <= levelLimits.max.y && bottomEdgePos >= playerFeetPos && !playerBody.climbingStair && getTileValue(x, y - 1) != LADDER_TILE) {
+					collidingAgainstStair = TRUE;
 					onStair = TRUE;
 					levelLimits.max.y = bottomEdgePos;
 					break;

@@ -17,4 +17,7 @@ void loadLevel() {
 
 	//We need to call this function at some point, this place seems to be a good one for doing it
 	generateCollisionMap(collisionMap);
+
+	//Start play the level's song
+	XGM_startPlay(song);
 }
